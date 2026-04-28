@@ -1989,40 +1989,59 @@ function closeModalOnBg(e) {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 // ── Form submit — сохраняет в localStorage + готово к интеграции с webhook
-function submitForm() {
-  const name    = document.getElementById('fieldName').value.trim();
-  const email   = document.getElementById('fieldEmail').value.trim();
-  const link    = document.getElementById('fieldLink').value.trim();
-  const platform= document.getElementById('fieldPlatform').value;
-  const comment = document.getElementById('fieldComment').value.trim();
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLOHwnvfysXuobXQEjfQBpjVBKg83W1ex5_MLzGuiAl3Oex7ECaWXpy-I7IVaS8Z44/exec';
+
+async function submitForm() {
+  const submitBtn = document.querySelector('.form-submit');
+
+  const name     = document.getElementById('fieldName').value.trim();
+  const email    = document.getElementById('fieldEmail').value.trim();
+  const link     = document.getElementById('fieldLink').value.trim();
+  const platform = document.getElementById('fieldPlatform').value;
+  const comment  = document.getElementById('fieldComment').value.trim();
 
   if (!name || !email || !link) {
     alert('Пожалуйста, заполните обязательные поля: имя, email и ссылку на площадку.');
     return;
   }
 
-  // Собираем данные
   const entry = {
-    timestamp: new Date().toISOString(),
-    name, email, link, platform, comment
+    name,
+    email,
+    link,
+    platform,
+    comment,
+    page: window.location.href
   };
 
-  // Сохраняем в localStorage (потом можно выгружать)
-  const existing = JSON.parse(localStorage.getItem('creator_leads') || '[]');
-  existing.push(entry);
-  localStorage.setItem('creator_leads', JSON.stringify(existing));
+  try {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Отправляем...';
 
-  // TODO: заменить на webhook Mattermost / Telegram / email
-  // fetch('YOUR_WEBHOOK_URL', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(entry) });
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify(entry)
+    });
 
-  console.log('New lead:', entry);
+    document.getElementById('modalForm').style.display = 'none';
+    document.getElementById('modalSuccess').style.display = 'block';
 
-  // Показываем успех
-  document.getElementById('modalForm').style.display = 'none';
-  document.getElementById('modalSuccess').style.display = 'block';
+    ['fieldName', 'fieldEmail', 'fieldLink', 'fieldComment'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
 
-  // Сброс полей
-  ['fieldName','fieldEmail','fieldLink','fieldComment'].forEach(id => document.getElementById(id).value = '');
+  } catch (error) {
+    console.error(error);
+    alert('Не удалось отправить заявку. Попробуйте ещё раз или напишите нам на info@artmore.company');
+
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Отправить заявку →';
+  }
 }
 
 // ── Фильтр продуктов
